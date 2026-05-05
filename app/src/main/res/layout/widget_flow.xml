@@ -27,7 +27,7 @@
                 android:ellipsize="end"
                 android:fontFamily="sans"
                 android:maxLines="1"
-                android:text="PostHUB Flow"
+                android:text="@string/widget_title"
                 android:textColor="#17201C"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -38,7 +38,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="Ready"
+                android:text="@string/widget_ready"
                 android:textColor="#66736D"
                 android:textSize="12sp" />
         </LinearLayout>
@@ -74,7 +74,7 @@
             android:paddingTop="5dp"
             android:paddingEnd="10dp"
             android:paddingBottom="5dp"
-            android:text="Idle"
+            android:text="@string/widget_idle"
             android:textAlignment="center"
             android:textColor="#006B5B"
             android:textSize="11sp"
@@ -88,7 +88,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="No run yet"
+            android:text="@string/widget_no_run"
             android:textColor="#66736D"
             android:textSize="12sp" />
     </LinearLayout>
@@ -103,7 +103,7 @@
         android:fontFamily="sans"
         android:gravity="top"
         android:maxLines="4"
-        android:text="Tap refresh to run the saved flow."
+        android:text="@string/widget_empty_state"
         android:textColor="#17201C"
         android:textSize="13sp" />
 

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/posthub_primary"
+        android:pathData="M18,8h72c5.5,0 10,4.5 10,10v72c0,5.5 -4.5,10 -10,10H18c-5.5,0 -10,-4.5 -10,-10V18C8,12.5 12.5,8 18,8z" />
+    <path
+        android:fillColor="#0F7D6E"
+        android:pathData="M18,8h72c5.5,0 10,4.5 10,10v25H8V18C8,12.5 12.5,8 18,8z" />
+    <path
+        android:fillColor="@color/posthub_surface"
+        android:pathData="M27,24h54c4.4,0 8,3.6 8,8v45c0,4.4 -3.6,8 -8,8H27c-4.4,0 -8,-3.6 -8,-8V32c0,-4.4 3.6,-8 8,-8z" />
+    <path
+        android:fillColor="#E3F4EF"
+        android:pathData="M27,24h54c4.4,0 8,3.6 8,8v9H19v-9c0,-4.4 3.6,-8 8,-8z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M34,51H54C62,51 62,44 69,44H77M73,40l4,4l-4,4"
+        android:strokeColor="@color/posthub_primary"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M34,65H49C57,65 57,73 65,73H77M73,69l4,4l-4,4"
+        android:strokeColor="@color/posthub_coral"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M34,78H60"
+        android:strokeColor="@color/posthub_amber"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+</vector>

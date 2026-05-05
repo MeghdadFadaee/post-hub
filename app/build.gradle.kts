@@ -1,7 +1,25 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+val releasePropertiesFile = rootProject.file("keystore.properties")
+val releaseProperties = Properties().apply {
+    if (releasePropertiesFile.isFile) {
+        releasePropertiesFile.inputStream().use(::load)
+    }
+}
+
+fun releaseProperty(name: String): String? {
+    return releaseProperties.getProperty(name) ?: providers.environmentVariable(name).orNull
+}
+
+val releaseStoreFile = releaseProperty("POSTHUB_STORE_FILE")
+val releaseStorePassword = releaseProperty("POSTHUB_STORE_PASSWORD")
+val releaseKeyAlias = releaseProperty("POSTHUB_KEY_ALIAS")
+val releaseKeyPassword = releaseProperty("POSTHUB_KEY_PASSWORD")
 
 android {
     namespace = "net.rodakot.posthub"
@@ -16,19 +34,43 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (!releaseStoreFile.isNullOrBlank()) {
+                storeFile = rootProject.file(releaseStoreFile)
+            }
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            val releaseSigning = signingConfigs.getByName("release")
+            if (
+                releaseSigning.storeFile != null &&
+                releaseSigning.storePassword != null &&
+                releaseSigning.keyAlias != null &&
+                releaseSigning.keyPassword != null
+            ) {
+                signingConfig = releaseSigning
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+    lint {
+        abortOnError = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

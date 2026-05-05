@@ -2,4 +2,9 @@
     <string name="app_name">Post HUB</string>
     <string name="widget_description">Run your saved PostHUB flow from the home screen.</string>
     <string name="widget_refresh">Refresh flow</string>
+    <string name="widget_title">PostHUB Flow</string>
+    <string name="widget_ready">Ready</string>
+    <string name="widget_idle">Idle</string>
+    <string name="widget_no_run">No run yet</string>
+    <string name="widget_empty_state">Tap refresh to run the saved flow.</string>
 </resources>
