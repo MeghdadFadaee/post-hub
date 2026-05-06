@@ -7,4 +7,10 @@
     <color name="posthub_border">#DDE4DF</color>
     <color name="posthub_coral">#D84B35</color>
     <color name="posthub_amber">#C47A12</color>
+    <color name="posthub_widget_background">#F7FAF7</color>
+    <color name="posthub_widget_refresh">#006B5B</color>
+    <color name="posthub_widget_pill">#E3F4EF</color>
+    <color name="posthub_widget_title">#17201C</color>
+    <color name="posthub_widget_subtitle">#66736D</color>
+    <color name="posthub_widget_status">#006B5B</color>
 </resources>

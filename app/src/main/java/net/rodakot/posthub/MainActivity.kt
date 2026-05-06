@@ -5,9 +5,11 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -56,6 +58,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +80,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -102,20 +107,31 @@ private const val EnvironmentKey = "environment_variables"
 private const val FlowKey = "request_flow"
 
 private object AppColors {
-    val Canvas = Color(0xFFF5F7F4)
-    val Panel = Color(0xFFFFFFFF)
-    val PanelSoft = Color(0xFFF0F4F1)
-    val Ink = Color(0xFF17201C)
-    val Muted = Color(0xFF66736D)
-    val Border = Color(0xFFDDE4DF)
-    val Primary = Color(0xFF006B5B)
-    val PrimarySoft = Color(0xFFE3F4EF)
-    val Coral = Color(0xFFD84B35)
-    val Amber = Color(0xFFC47A12)
-    val Green = Color(0xFF147A56)
-    val Red = Color(0xFFC7383D)
-    val Code = Color(0xFF101715)
-    val CodeText = Color(0xFFEAF3EF)
+    private val darkMode = mutableStateOf(false)
+
+    fun useDarkTheme(enabled: Boolean) {
+        if (darkMode.value != enabled) {
+            darkMode.value = enabled
+        }
+    }
+
+    private val isDark: Boolean get() = darkMode.value
+
+    val Canvas: Color get() = if (isDark) Color(0xFF0E1513) else Color(0xFFF5F7F4)
+    val Panel: Color get() = if (isDark) Color(0xFF151D1A) else Color(0xFFFFFFFF)
+    val PanelSoft: Color get() = if (isDark) Color(0xFF1C2824) else Color(0xFFF0F4F1)
+    val Ink: Color get() = if (isDark) Color(0xFFEAF3EF) else Color(0xFF17201C)
+    val Muted: Color get() = if (isDark) Color(0xFFA2B2AB) else Color(0xFF66736D)
+    val Border: Color get() = if (isDark) Color(0xFF2E3B36) else Color(0xFFDDE4DF)
+    val Primary: Color get() = if (isDark) Color(0xFF5FE0C5) else Color(0xFF006B5B)
+    val OnPrimary: Color get() = if (isDark) Color(0xFF05201B) else Color.White
+    val PrimarySoft: Color get() = if (isDark) Color(0xFF14382F) else Color(0xFFE3F4EF)
+    val Coral: Color get() = if (isDark) Color(0xFFFF9A83) else Color(0xFFD84B35)
+    val Amber: Color get() = if (isDark) Color(0xFFE8B660) else Color(0xFFC47A12)
+    val Green: Color get() = if (isDark) Color(0xFF68D8A7) else Color(0xFF147A56)
+    val Red: Color get() = if (isDark) Color(0xFFFF8A8F) else Color(0xFFC7383D)
+    val Code: Color get() = if (isDark) Color(0xFF07100D) else Color(0xFF101715)
+    val CodeText: Color get() = Color(0xFFEAF3EF)
 }
 
 private data class RequestField(
@@ -214,7 +230,7 @@ private data class FlowRunEntry(
     val savedVariables: Int = 0
 )
 
-private val AppSections = listOf(
+private fun appSections() = listOf(
     AppSection("request", "Request", "Composer", AppColors.Primary),
     AppSection("clients", "Clients", "MCI TCI", AppColors.Coral),
     AppSection("flow", "Flow", "Sequence", AppColors.Amber),
@@ -226,10 +242,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_PostHUB)
         super.onCreate(savedInstanceState)
+        window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
+        window.decorView.textDirection = View.TEXT_DIRECTION_LTR
         enableEdgeToEdge()
         setContent {
-            PostHUBTheme(dynamicColor = false) {
-                ApiClientApp()
+            val darkTheme = isSystemInDarkTheme()
+            AppColors.useDarkTheme(darkTheme)
+            PostHUBTheme(darkTheme = darkTheme, dynamicColor = false) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    ApiClientApp()
+                }
             }
         }
     }
@@ -617,6 +639,8 @@ private fun AppHomeHeader(
     variables: Int,
     onSectionChange: (String) -> Unit
 ) {
+    val sections = appSections()
+
     PanelSurface {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
@@ -630,8 +654,8 @@ private fun AppHomeHeader(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = AppColors.Ink,
-                        contentColor = Color.White
+                        color = AppColors.Primary,
+                        contentColor = AppColors.OnPrimary
                     ) {
                         Text(
                             text = "PH",
@@ -648,7 +672,7 @@ private fun AppHomeHeader(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = AppSections.firstOrNull { it.key == activeSection }?.meta ?: "Request client",
+                            text = sections.firstOrNull { it.key == activeSection }?.meta ?: "Request client",
                             color = AppColors.Muted,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -675,7 +699,7 @@ private fun AppHomeHeader(
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AppSections.forEach { section ->
+                sections.forEach { section ->
                     AppSectionChip(
                         section = section,
                         selected = activeSection == section.key,
@@ -942,7 +966,7 @@ private fun SendButton(
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = AppColors.Primary,
-            contentColor = Color.White,
+            contentColor = AppColors.OnPrimary,
             disabledContainerColor = AppColors.Border,
             disabledContentColor = AppColors.Muted
         )
@@ -951,7 +975,7 @@ private fun SendButton(
             CircularProgressIndicator(
                 modifier = Modifier.size(18.dp),
                 strokeWidth = 2.dp,
-                color = Color.White
+                color = AppColors.OnPrimary
             )
             Spacer(Modifier.width(8.dp))
             Text("Sending")
@@ -1167,13 +1191,18 @@ private fun FlowPanel(
                     onClick = onRun,
                     enabled = steps.isNotEmpty() && !isRunning,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.Primary)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.Primary,
+                        contentColor = AppColors.OnPrimary,
+                        disabledContainerColor = AppColors.Border,
+                        disabledContentColor = AppColors.Muted
+                    )
                 ) {
                     if (isRunning) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
-                            color = Color.White
+                            color = AppColors.OnPrimary
                         )
                         Spacer(Modifier.width(8.dp))
                     }

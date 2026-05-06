@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="posthub_primary">#5FE0C5</color>
+    <color name="posthub_primary_dark">#14382F</color>
+    <color name="posthub_canvas">#0E1513</color>
+    <color name="posthub_surface">#151D1A</color>
+    <color name="posthub_border">#2E3B36</color>
+    <color name="posthub_coral">#FF9A83</color>
+    <color name="posthub_amber">#E8B660</color>
+    <color name="posthub_widget_background">#151D1A</color>
+    <color name="posthub_widget_refresh">#5FE0C5</color>
+    <color name="posthub_widget_pill">#14382F</color>
+    <color name="posthub_widget_title">#EAF3EF</color>
+    <color name="posthub_widget_subtitle">#A2B2AB</color>
+    <color name="posthub_widget_status">#5FE0C5</color>
+</resources>
