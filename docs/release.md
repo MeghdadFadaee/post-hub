@@ -33,6 +33,7 @@ Run these commands from the project root:
 ```powershell
 $env:GRADLE_USER_HOME='C:\Path\To\PostHUB\.gradle'
 .\gradlew.bat :app:testDebugUnitTest :app:lintRelease :app:bundleRelease --console=plain
+.\gradlew assembleRelease # or thid for building APK
 ```
 
 Upload the generated bundle:
