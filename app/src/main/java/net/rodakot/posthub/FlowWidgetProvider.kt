@@ -43,6 +43,8 @@ class FlowWidgetProvider : AppWidgetProvider() {
         val appContext = context.applicationContext
         val manager = AppWidgetManager.getInstance(appContext)
         val ids = widgetIds(appContext, manager, intent)
+        val widgetConfig = loadWidgetConfig(appContext)
+        val widgetVariables = loadEnvironmentVariables(appContext).toEnvironmentMap()
 
         ids.forEach { widgetId ->
             manager.updateAppWidget(
@@ -51,6 +53,12 @@ class FlowWidgetProvider : AppWidgetProvider() {
                     context = appContext,
                     widgetId = widgetId,
                     state = WidgetState(
+                        title = renderWidgetTemplate(
+                            template = widgetConfig.titleTemplate,
+                            values = widgetVariables,
+                            fallback = WidgetDisplayConfig().titleTemplate,
+                            maxLength = 48
+                        ),
                         subtitle = "Running saved flow",
                         status = "Running",
                         meta = "Starting",
@@ -99,7 +107,7 @@ class FlowWidgetProvider : AppWidgetProvider() {
         private const val ENVIRONMENT_KEY = "environment_variables"
         private const val FLOW_KEY = "request_flow"
         private const val WIDGET_STATE_KEY = "widget_state"
-        private const val COLOR_PRIMARY = 0xFF006B5B.toInt()
+        private const val WIDGET_CONFIG_KEY = "widget_config"
         private const val COLOR_AMBER = 0xFFC47A12.toInt()
         private const val COLOR_GREEN = 0xFF147A56.toInt()
         private const val COLOR_RED = 0xFFC7383D.toInt()
@@ -116,6 +124,14 @@ private data class WidgetState(
     val meta: String = "Tap refresh",
     val body: String = "Run your saved flow from the home screen.",
     val statusColor: Int = 0xFF006B5B.toInt()
+)
+
+private data class WidgetDisplayConfig(
+    val titleTemplate: String = "PostHUB Flow",
+    val subtitleTemplate: String = "{{flow_steps}} step flow",
+    val statusTemplate: String = "{{status_code}}",
+    val metaTemplate: String = "{{duration_ms}} ms  {{bytes}}",
+    val bodyTemplate: String = "{{summary}}"
 )
 
 private data class WidgetRequestField(
@@ -236,12 +252,27 @@ private fun runSavedFlow(
     onProgress: (WidgetState) -> Unit
 ): WidgetState {
     val steps = loadFlowSteps(context).ifEmpty { defaultWidgetFlow() }
+    val widgetConfig = loadWidgetConfig(context)
     var environmentRows = loadEnvironmentVariables(context)
     var lastResult: WidgetRequestResult? = null
 
     steps.forEachIndexed { index, step ->
+        val progressValues = environmentRows.toEnvironmentMap() + mapOf(
+            "flow_steps" to steps.size.toString(),
+            "step_index" to (index + 1).toString(),
+            "step_name" to step.request.name,
+            "status" to "Running",
+            "status_code" to "Running",
+            "summary" to step.request.url
+        )
         onProgress(
             WidgetState(
+                title = renderWidgetTemplate(
+                    template = widgetConfig.titleTemplate,
+                    values = progressValues,
+                    fallback = WidgetDisplayConfig().titleTemplate,
+                    maxLength = 48
+                ),
                 subtitle = "Step ${index + 1} of ${steps.size}",
                 status = "Running",
                 meta = step.request.name,
@@ -257,11 +288,27 @@ private fun runSavedFlow(
         lastResult = result
 
         if (result.error != null) {
+            val errorValues = environmentRows.toEnvironmentMap() + mapOf(
+                "flow_steps" to steps.size.toString(),
+                "step_index" to (index + 1).toString(),
+                "step_name" to step.request.name,
+                "status" to "Error",
+                "status_code" to "Error",
+                "status_text" to result.statusText,
+                "duration_ms" to result.durationMs.toString(),
+                "bytes" to formatBytes(result.byteCount),
+                "byte_count" to result.byteCount.toString(),
+                "final_url" to result.finalUrl,
+                "summary" to result.error,
+                "body" to result.error,
+                "raw_body" to result.rawBody
+            )
             return WidgetState(
-                subtitle = "Failed at ${step.request.name}",
-                status = "Error",
-                meta = result.statusText,
-                body = result.error,
+                title = renderWidgetTemplate(widgetConfig.titleTemplate, errorValues, WidgetDisplayConfig().titleTemplate, 48),
+                subtitle = renderWidgetTemplate(widgetConfig.subtitleTemplate, errorValues, "Failed at ${step.request.name}", 80),
+                status = renderWidgetTemplate(widgetConfig.statusTemplate, errorValues, "Error", 18),
+                meta = renderWidgetTemplate(widgetConfig.metaTemplate, errorValues, result.statusText, 80),
+                body = renderWidgetTemplate(widgetConfig.bodyTemplate, errorValues, result.error, 420),
                 statusColor = 0xFFC7383D.toInt()
             )
         }
@@ -274,6 +321,17 @@ private fun runSavedFlow(
     }
 
     val result = lastResult ?: return WidgetState(
+        title = renderWidgetTemplate(
+            template = widgetConfig.titleTemplate,
+            values = mapOf(
+                "flow_steps" to "0",
+                "status" to "Empty",
+                "status_code" to "Empty",
+                "summary" to "Create or add requests to a flow, then refresh this widget."
+            ),
+            fallback = WidgetDisplayConfig().titleTemplate,
+            maxLength = 48
+        ),
         subtitle = "No flow steps",
         status = "Empty",
         meta = "Open PostHUB",
@@ -281,11 +339,13 @@ private fun runSavedFlow(
         statusColor = 0xFF66736D.toInt()
     )
 
+    val finalValues = widgetTemplateValues(result, environmentRows, steps.size)
     return WidgetState(
-        subtitle = "${steps.size} step flow",
-        status = result.statusCode?.toString() ?: "Done",
-        meta = "${result.durationMs} ms  ${formatBytes(result.byteCount)}",
-        body = summarizeWidgetResponse(result),
+        title = renderWidgetTemplate(widgetConfig.titleTemplate, finalValues, WidgetDisplayConfig().titleTemplate, 48),
+        subtitle = renderWidgetTemplate(widgetConfig.subtitleTemplate, finalValues, "${steps.size} step flow", 80),
+        status = renderWidgetTemplate(widgetConfig.statusTemplate, finalValues, result.statusCode?.toString() ?: "Done", 18),
+        meta = renderWidgetTemplate(widgetConfig.metaTemplate, finalValues, "${result.durationMs} ms  ${formatBytes(result.byteCount)}", 80),
+        body = renderWidgetTemplate(widgetConfig.bodyTemplate, finalValues, summarizeWidgetResponse(result), 420),
         statusColor = statusColor(result.statusCode)
     )
 }
@@ -422,7 +482,7 @@ private fun loadLastWidgetState(context: Context): WidgetState {
         .getSharedPreferences("posthub_state", Context.MODE_PRIVATE)
         .getString("widget_state", null)
 
-    if (raw.isNullOrBlank()) return WidgetState()
+    if (raw.isNullOrBlank()) return defaultRenderedWidgetState(context)
 
     return runCatching {
         val json = JSONObject(raw)
@@ -435,6 +495,91 @@ private fun loadLastWidgetState(context: Context): WidgetState {
             statusColor = json.optInt("statusColor", 0xFF006B5B.toInt())
         )
     }.getOrDefault(WidgetState())
+}
+
+private fun defaultRenderedWidgetState(context: Context): WidgetState {
+    val config = loadWidgetConfig(context)
+    val values = loadEnvironmentVariables(context).toEnvironmentMap() + mapOf(
+        "flow_steps" to "0",
+        "status" to "Ready",
+        "status_code" to "Ready",
+        "status_text" to "Ready",
+        "duration_ms" to "",
+        "bytes" to "",
+        "byte_count" to "",
+        "final_url" to "",
+        "summary" to "Run your saved flow from the home screen.",
+        "body" to "Run your saved flow from the home screen.",
+        "raw_body" to ""
+    )
+
+    return WidgetState(
+        title = renderWidgetTemplate(config.titleTemplate, values, WidgetDisplayConfig().titleTemplate, 48),
+        subtitle = renderWidgetTemplate(config.subtitleTemplate, values, "Home runner", 80),
+        status = renderWidgetTemplate(config.statusTemplate, values, "Ready", 18),
+        meta = renderWidgetTemplate(config.metaTemplate, values, "Tap refresh", 80),
+        body = renderWidgetTemplate(config.bodyTemplate, values, "Run your saved flow from the home screen.", 420),
+        statusColor = 0xFF006B5B.toInt()
+    )
+}
+
+private fun loadWidgetConfig(context: Context): WidgetDisplayConfig {
+    val raw = context
+        .getSharedPreferences("posthub_state", Context.MODE_PRIVATE)
+        .getString("widget_config", null)
+
+    if (raw.isNullOrBlank()) return WidgetDisplayConfig()
+
+    return runCatching {
+        val json = JSONObject(raw)
+        WidgetDisplayConfig(
+            titleTemplate = json.optString("titleTemplate", WidgetDisplayConfig().titleTemplate),
+            subtitleTemplate = json.optString("subtitleTemplate", WidgetDisplayConfig().subtitleTemplate),
+            statusTemplate = json.optString("statusTemplate", WidgetDisplayConfig().statusTemplate),
+            metaTemplate = json.optString("metaTemplate", WidgetDisplayConfig().metaTemplate),
+            bodyTemplate = json.optString("bodyTemplate", WidgetDisplayConfig().bodyTemplate)
+        )
+    }.getOrDefault(WidgetDisplayConfig())
+}
+
+private fun widgetTemplateValues(
+    result: WidgetRequestResult,
+    environmentRows: List<WidgetRequestField>,
+    flowSteps: Int
+): Map<String, String> {
+    val statusValue = result.statusCode?.toString() ?: "Done"
+    return environmentRows.toEnvironmentMap() + mapOf(
+        "flow_steps" to flowSteps.toString(),
+        "status" to statusValue,
+        "status_code" to statusValue,
+        "status_text" to result.statusText,
+        "duration_ms" to result.durationMs.toString(),
+        "bytes" to formatBytes(result.byteCount),
+        "byte_count" to result.byteCount.toString(),
+        "final_url" to result.finalUrl,
+        "summary" to summarizeWidgetResponse(result),
+        "body" to result.body,
+        "raw_body" to result.rawBody
+    )
+}
+
+private fun renderWidgetTemplate(
+    template: String,
+    values: Map<String, String>,
+    fallback: String,
+    maxLength: Int
+): String {
+    val source = template.ifBlank { fallback }
+    val rendered = source.applyVariables(values).trim().ifBlank {
+        fallback.applyVariables(values).trim()
+    }
+    return rendered.limitWidgetText(maxLength)
+}
+
+private fun String.limitWidgetText(maxLength: Int): String {
+    if (length <= maxLength) return this
+    if (maxLength <= 3) return take(maxLength)
+    return take(maxLength - 3).trimEnd() + "..."
 }
 
 private fun saveLastWidgetState(

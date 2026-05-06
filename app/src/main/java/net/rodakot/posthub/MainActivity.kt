@@ -105,6 +105,7 @@ private val VariablePattern = Regex("""\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}""")
 private const val PrefName = "posthub_state"
 private const val EnvironmentKey = "environment_variables"
 private const val FlowKey = "request_flow"
+private const val WidgetConfigKey = "widget_config"
 
 private object AppColors {
     private val darkMode = mutableStateOf(false)
@@ -230,6 +231,14 @@ private data class FlowRunEntry(
     val savedVariables: Int = 0
 )
 
+private data class WidgetConfig(
+    val titleTemplate: String = "PostHUB Flow",
+    val subtitleTemplate: String = "{{flow_steps}} step flow",
+    val statusTemplate: String = "{{status_code}}",
+    val metaTemplate: String = "{{duration_ms}} ms  {{bytes}}",
+    val bodyTemplate: String = "{{summary}}"
+)
+
 private fun appSections() = listOf(
     AppSection("request", "Request", "Composer", AppColors.Primary),
     AppSection("clients", "Clients", "MCI TCI", AppColors.Coral),
@@ -285,6 +294,7 @@ private fun ApiClientApp() {
             loadFlowSteps(appContext).ifEmpty { defaultFlowSteps(builtInRequests) }
         )
     }
+    var widgetConfig by remember { mutableStateOf(loadWidgetConfig(appContext)) }
     var flowRun by remember { mutableStateOf<List<FlowRunEntry>>(emptyList()) }
     var response by remember { mutableStateOf<RequestResult?>(null) }
     var history by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
@@ -300,6 +310,11 @@ private fun ApiClientApp() {
     fun updateFlowSteps(next: List<FlowStep>) {
         flowSteps = next
         saveFlowSteps(appContext, next)
+    }
+
+    fun updateWidgetConfig(next: WidgetConfig) {
+        widgetConfig = next
+        saveWidgetConfig(appContext, next)
     }
 
     fun currentRequest(): SavedRequest {
@@ -540,8 +555,10 @@ private fun ApiClientApp() {
                             steps = flowSteps,
                             runEntries = flowRun,
                             isRunning = isFlowRunning,
+                            widgetConfig = widgetConfig,
                             onAddCurrent = ::addCurrentRequestToFlow,
                             onRun = ::runFlow,
+                            onWidgetConfigChange = ::updateWidgetConfig,
                             onLoad = { loadSavedRequest(it.request) },
                             onRemove = { step ->
                                 updateFlowSteps(flowSteps.filterNot { it.id == step.id })
@@ -1164,8 +1181,10 @@ private fun FlowPanel(
     steps: List<FlowStep>,
     runEntries: List<FlowRunEntry>,
     isRunning: Boolean,
+    widgetConfig: WidgetConfig,
     onAddCurrent: () -> Unit,
     onRun: () -> Unit,
+    onWidgetConfigChange: (WidgetConfig) -> Unit,
     onLoad: (FlowStep) -> Unit,
     onRemove: (FlowStep) -> Unit
 ) {
@@ -1234,8 +1253,112 @@ private fun FlowPanel(
                     }
                 }
             }
+
+            WidgetTextEditor(
+                config = widgetConfig,
+                onConfigChange = onWidgetConfigChange
+            )
         }
     }
+}
+
+@Composable
+private fun WidgetTextEditor(
+    config: WidgetConfig,
+    onConfigChange: (WidgetConfig) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = AppColors.PanelSoft,
+        border = BorderStroke(1.dp, AppColors.Border)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                SectionTitle(title = "Widget text", meta = "Templates")
+                TextButton(onClick = { onConfigChange(WidgetConfig()) }) {
+                    Text("Reset", fontWeight = FontWeight.Bold)
+                }
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                StatusPill("{{summary}}", AppColors.Primary)
+                StatusPill("{{status_code}}", AppColors.Green)
+                StatusPill("{{duration_ms}}", AppColors.Amber)
+                StatusPill("{{public_ip}}", AppColors.Coral)
+            }
+
+            WidgetTemplateField(
+                label = "Title",
+                value = config.titleTemplate,
+                placeholder = "PostHUB Flow",
+                onValueChange = { onConfigChange(config.copy(titleTemplate = it)) }
+            )
+            WidgetTemplateField(
+                label = "Subtitle",
+                value = config.subtitleTemplate,
+                placeholder = "{{flow_steps}} step flow",
+                onValueChange = { onConfigChange(config.copy(subtitleTemplate = it)) }
+            )
+            WidgetTemplateField(
+                label = "Status",
+                value = config.statusTemplate,
+                placeholder = "{{status_code}}",
+                onValueChange = { onConfigChange(config.copy(statusTemplate = it)) }
+            )
+            WidgetTemplateField(
+                label = "Meta",
+                value = config.metaTemplate,
+                placeholder = "{{duration_ms}} ms  {{bytes}}",
+                onValueChange = { onConfigChange(config.copy(metaTemplate = it)) }
+            )
+            WidgetTemplateField(
+                label = "Body",
+                value = config.bodyTemplate,
+                placeholder = "{{summary}}",
+                minLines = 2,
+                onValueChange = { onConfigChange(config.copy(bodyTemplate = it)) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun WidgetTemplateField(
+    label: String,
+    value: String,
+    placeholder: String,
+    minLines: Int = 1,
+    onValueChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        minLines = minLines,
+        maxLines = if (minLines > 1) 3 else 1,
+        singleLine = minLines == 1,
+        shape = RoundedCornerShape(8.dp),
+        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+        label = { Text(label) },
+        placeholder = {
+            Text(
+                text = placeholder,
+                color = AppColors.Muted,
+                maxLines = 1
+            )
+        }
+    )
 }
 
 @Composable
@@ -2759,6 +2882,43 @@ private fun saveFlowSteps(
         .getSharedPreferences(PrefName, Context.MODE_PRIVATE)
         .edit()
         .putString(FlowKey, array.toString())
+        .apply()
+}
+
+private fun loadWidgetConfig(context: Context): WidgetConfig {
+    val raw = context
+        .getSharedPreferences(PrefName, Context.MODE_PRIVATE)
+        .getString(WidgetConfigKey, null)
+
+    if (raw.isNullOrBlank()) return WidgetConfig()
+
+    return runCatching {
+        val json = JSONObject(raw)
+        WidgetConfig(
+            titleTemplate = json.optString("titleTemplate", WidgetConfig().titleTemplate),
+            subtitleTemplate = json.optString("subtitleTemplate", WidgetConfig().subtitleTemplate),
+            statusTemplate = json.optString("statusTemplate", WidgetConfig().statusTemplate),
+            metaTemplate = json.optString("metaTemplate", WidgetConfig().metaTemplate),
+            bodyTemplate = json.optString("bodyTemplate", WidgetConfig().bodyTemplate)
+        )
+    }.getOrDefault(WidgetConfig())
+}
+
+private fun saveWidgetConfig(
+    context: Context,
+    config: WidgetConfig
+) {
+    val json = JSONObject()
+        .put("titleTemplate", config.titleTemplate)
+        .put("subtitleTemplate", config.subtitleTemplate)
+        .put("statusTemplate", config.statusTemplate)
+        .put("metaTemplate", config.metaTemplate)
+        .put("bodyTemplate", config.bodyTemplate)
+
+    context
+        .getSharedPreferences(PrefName, Context.MODE_PRIVATE)
+        .edit()
+        .putString(WidgetConfigKey, json.toString())
         .apply()
 }
 
