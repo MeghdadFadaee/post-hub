@@ -4,7 +4,6 @@
     <style name="Theme.PostHUB.Starting" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowSplashScreenBackground">@color/posthub_canvas</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_brand</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/posthub_primary</item>
         <item name="android:windowBackground">@drawable/splash_window_background</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
