@@ -24,15 +24,13 @@ val releaseKeyPassword = releaseProperty("POSTHUB_KEY_PASSWORD")
 android {
     namespace = "net.rodakot.posthub"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "net.rodakot.posthub"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 103000
         versionName = "1.3.0"
 
